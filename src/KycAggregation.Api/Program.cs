@@ -1,5 +1,6 @@
 using KycAggregation.Api.Api;
 using KycAggregation.Api.Error;
+using KycAggregation.Api.Http;
 using KycAggregation.Api.Persistence;
 using KycAggregation.Api.Security;
 using KycAggregation.Api.Services;
@@ -15,7 +16,8 @@ var config = builder.Configuration;
 var apiOptions = config.GetSection(CustomerDataApiOptions.SectionName).Get<CustomerDataApiOptions>()
     ?? throw new InvalidOperationException("CustomerDataApi configuration is missing.");
 builder.Services.AddHttpClient<ICustomerDataClient, CustomerDataClient>(client =>
-    client.BaseAddress = new Uri(apiOptions.BaseUrl));
+    client.BaseAddress = new Uri(apiOptions.BaseUrl))
+    .AddStandardResilienceHandler();
 
 // Persistence: file-based SQLite with Data Protection keys persisted to disk so encrypted
 // records can still be decrypted after a restart.
@@ -43,7 +45,10 @@ var permitLimit = config.GetValue("RateLimiting:PermitLimit", 100);
 var windowSeconds = config.GetValue("RateLimiting:WindowSeconds", 60);
 builder.Services.AddRateLimiter(options =>
 {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        await ErrorResults.TooManyRequests().ExecuteAsync(context.HttpContext);
+    };
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ =>
         RateLimitPartition.GetFixedWindowLimiter("global", _ => new FixedWindowRateLimiterOptions
         {

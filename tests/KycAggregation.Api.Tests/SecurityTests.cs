@@ -46,6 +46,7 @@ public sealed class SecurityTests
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, second.StatusCode);
+        Assert.Contains("error", await second.Content.ReadAsStringAsync());
     }
 
     [Fact]

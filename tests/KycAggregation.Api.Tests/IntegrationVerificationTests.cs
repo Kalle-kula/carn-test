@@ -69,7 +69,9 @@ public sealed class IntegrationVerificationTests
             // First "run": fetch from upstream and persist.
             using (var first = new KycApiFactory
             {
-                DbPath = dbPath, KeysPath = keysPath, KeepFiles = true,
+                DbPath = dbPath,
+                KeysPath = keysPath,
+                KeepFiles = true,
                 Responder = (s, _) => Bundle(s),
             })
             using (var client = first.CreateAuthenticatedClient())
@@ -81,7 +83,9 @@ public sealed class IntegrationVerificationTests
             // Second "run": same database and keys, upstream throws if contacted.
             using (var second = new KycApiFactory
             {
-                DbPath = dbPath, KeysPath = keysPath, KeepFiles = true,
+                DbPath = dbPath,
+                KeysPath = keysPath,
+                KeepFiles = true,
                 ThrowOnFetch = true,
             })
             using (var client = second.CreateAuthenticatedClient())

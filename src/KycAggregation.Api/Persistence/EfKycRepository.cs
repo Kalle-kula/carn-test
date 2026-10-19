@@ -40,17 +40,28 @@ public sealed class EfKycRepository(KycDbContext db, SsnHasher hasher) : IKycRep
         var entity = await db.Records.FirstOrDefaultAsync(e => e.SsnHash == hash, ct);
         if (entity is null)
         {
-            entity = new KycRecordEntity { SsnHash = hash, FirstName = data.FirstName, LastName = data.LastName, Address = data.Address, TaxCountry = data.TaxCountry };
-            db.Records.Add(entity);
+            db.Records.Add(new KycRecordEntity
+            {
+                SsnHash = hash,
+                FirstName = data.FirstName,
+                LastName = data.LastName,
+                Address = data.Address,
+                TaxCountry = data.TaxCountry,
+                PhoneNumber = data.PhoneNumber,
+                Email = data.Email,
+                Income = data.Income,
+            });
         }
-
-        entity.FirstName = data.FirstName;
-        entity.LastName = data.LastName;
-        entity.Address = data.Address;
-        entity.TaxCountry = data.TaxCountry;
-        entity.PhoneNumber = data.PhoneNumber;
-        entity.Email = data.Email;
-        entity.Income = data.Income;
+        else
+        {
+            entity.FirstName = data.FirstName;
+            entity.LastName = data.LastName;
+            entity.Address = data.Address;
+            entity.TaxCountry = data.TaxCountry;
+            entity.PhoneNumber = data.PhoneNumber;
+            entity.Email = data.Email;
+            entity.Income = data.Income;
+        }
 
         await db.SaveChangesAsync(ct);
     }

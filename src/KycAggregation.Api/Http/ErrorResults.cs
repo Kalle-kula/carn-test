@@ -19,6 +19,9 @@ public static class ErrorResults
         Error(StatusCodes.Status500InternalServerError,
             "An unexpected error occurred while processing the request.");
 
+    public static IResult TooManyRequests() =>
+        Error(StatusCodes.Status429TooManyRequests, "Too many requests. Please retry later.");
+
     private static IResult Error(int statusCode, string message) =>
         Results.Json(new { error = message }, statusCode: statusCode);
 }
