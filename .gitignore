@@ -1,0 +1,25 @@
+## .NET build output
+bin/
+obj/
+out/
+
+## Rider / VS / VS Code
+.vs/
+.idea/
+*.user
+
+## Test results
+TestResults/
+*.trx
+
+## Local SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+## Secrets / local config
+appsettings.*.local.json
+secrets.json
+
+## OS
+.DS_Store
