@@ -1,7 +1,3 @@
-using KycAggregation.Api.Http;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-
 namespace KycAggregation.Api.Security;
 
 /// <summary>Rejects requests that do not present a valid API key in the `X-Api-Key` header.</summary>

@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Http;
-
 namespace KycAggregation.Api.Http;
 
 /// <summary>Single place for the client error contract: `{ "error": "..." }` with the taxonomy's status codes.</summary>
