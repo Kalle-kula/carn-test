@@ -2,10 +2,6 @@ using KycAggregation.Api.Http;
 using KycAggregation.Api.Persistence;
 using KycAggregation.Api.Services;
 using KycAggregation.Api.Validation;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
 
 namespace KycAggregation.Api.Api;
 

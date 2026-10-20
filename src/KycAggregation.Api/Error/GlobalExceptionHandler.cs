@@ -1,6 +1,5 @@
 using KycAggregation.Api.Http;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 
 namespace KycAggregation.Api.Error;
 
