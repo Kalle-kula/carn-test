@@ -5,8 +5,17 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IReadOnlySet<string> 
 {
     public const string HeaderName = "X-Api-Key";
 
+    // Only the data API is protected; the SPA shell and its static assets load without a key.
+    private const string ProtectedPathPrefix = "/kyc-data";
+
     public async Task InvokeAsync(HttpContext context)
     {
+        if (!context.Request.Path.StartsWithSegments(ProtectedPathPrefix))
+        {
+            await next(context);
+            return;
+        }
+
         var provided = context.Request.Headers[HeaderName].ToString();
         if (string.IsNullOrEmpty(provided) || !apiKeys.Contains(provided))
         {

@@ -11,4 +11,21 @@
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
   </ItemGroup>
 
+  <!-- Build the React client and publish it into wwwroot. Runs on publish only so
+       `dotnet build`/`dotnet test` stay fast and do not require Node. -->
+  <Target Name="BuildReactClient" BeforeTargets="Publish">
+    <PropertyGroup>
+      <WebClientDir>$(MSBuildProjectDirectory)/../../web</WebClientDir>
+    </PropertyGroup>
+    <Exec Command="npm install" WorkingDirectory="$(WebClientDir)"
+      Condition="!Exists('$(WebClientDir)/node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(WebClientDir)" />
+    <ItemGroup>
+      <ReactDist Include="$(WebClientDir)/dist/**/*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(MSBuildProjectDirectory)/wwwroot" />
+    <Copy SourceFiles="@(ReactDist)"
+      DestinationFiles="@(ReactDist->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
 </Project>

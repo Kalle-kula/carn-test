@@ -74,10 +74,18 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler(_ => { });
+
+// Serve the SPA assets before the API-key gate so the client can load without a
+// key; only /kyc-data/* stays protected below.
+app.UseStaticFiles();
+
 app.UseRateLimiter();
 app.UseApiKeyAuthentication(apiKeys);
 
 app.MapKycEndpoints();
+
+// SPA client-side routing: unmatched non-file routes return the client shell.
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

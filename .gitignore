@@ -3,6 +3,11 @@ bin/
 obj/
 out/
 
+## Generated frontend (built from web/ into the API's wwwroot)
+src/KycAggregation.Api/wwwroot/
+web/node_modules/
+web/dist/
+
 ## Rider / VS / VS Code
 .vs/
 .idea/
