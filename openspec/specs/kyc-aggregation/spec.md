@@ -116,6 +116,12 @@ application restart, without re-fetching from the upstream API.
   application has restarted
 - **THEN** the system returns the stored record without calling the upstream API
 
+#### Scenario: Upstream data changes after the record is stored
+
+- **WHEN** the upstream data for a stored SSN changes after it was first fetched
+- **THEN** the system keeps returning the stored record, and the upstream change
+  is not reflected
+
 ### Requirement: Endpoint authentication
 
 The system SHALL require a valid API key to access the KYC endpoint and reject
