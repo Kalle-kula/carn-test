@@ -26,6 +26,9 @@ public sealed class KycApiFactory : WebApplicationFactory<Program>
     public Func<string, DateOnly, CustomerDataBundle?> Responder { get; set; } = (_, _) => null;
     public bool ThrowOnFetch { get; set; }
     public int? PermitLimit { get; set; }
+    public string? WebRoot { get; init; }
+    /// <summary>When set, the real upstream client is used with this handler instead of the fake.</summary>
+    public HttpMessageHandler? UpstreamHandler { get; init; }
 
     public const string TestApiKey = "integration-test-api-key";
 
@@ -48,11 +51,25 @@ public sealed class KycApiFactory : WebApplicationFactory<Program>
         {
             builder.UseSetting("RateLimiting:PermitLimit", limit.ToString());
         }
+        if (WebRoot is not null)
+        {
+            builder.UseSetting(WebHostDefaults.WebRootKey, WebRoot);
+            // Otherwise Development also serves the repo's built client via the static web assets manifest.
+            builder.UseSetting(WebHostDefaults.StaticWebAssetsKey, Path.Combine(WebRoot, "no-manifest.json"));
+        }
 
         builder.ConfigureServices(services =>
         {
-            services.RemoveAll<ICustomerDataClient>();
-            services.AddSingleton<ICustomerDataClient>(new FakeClient(this));
+            if (UpstreamHandler is not null)
+            {
+                services.AddHttpClient<ICustomerDataClient, CustomerDataClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => UpstreamHandler);
+            }
+            else
+            {
+                services.RemoveAll<ICustomerDataClient>();
+                services.AddSingleton<ICustomerDataClient>(new FakeClient(this));
+            }
             services.AddSingleton<ILoggerProvider>(new CapturingLoggerProvider(Logs));
         });
     }

@@ -11,21 +11,78 @@
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
   </ItemGroup>
 
-  <!-- Build the React client and publish it into wwwroot. Runs on publish only so
-       `dotnet build`/`dotnet test` stay fast and do not require Node. -->
-  <Target Name="BuildReactClient" BeforeTargets="Publish">
-    <PropertyGroup>
-      <WebClientDir>$(MSBuildProjectDirectory)/../../web</WebClientDir>
-    </PropertyGroup>
-    <Exec Command="npm install" WorkingDirectory="$(WebClientDir)"
-      Condition="!Exists('$(WebClientDir)/node_modules')" />
-    <Exec Command="npm run build" WorkingDirectory="$(WebClientDir)" />
-    <ItemGroup>
-      <ReactDist Include="$(WebClientDir)/dist/**/*" />
+  <!-- React client in web/ is built into wwwroot on build. Node.js is optional:
+       without it the API still builds and runs, with warning KYC001.
+       Opt out with -p:SkipClientBuild=true. -->
+  <PropertyGroup>
+    <WebClientDir>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '..', '..', 'web'))</WebClientDir>
+    <ClientIndexFile>$(MSBuildProjectDirectory)/wwwroot/index.html</ClientIndexFile>
+    <ClientNpmMarker>$(WebClientDir)node_modules/.package-lock.json</ClientNpmMarker>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ClientBuildInput
+      Include="$(WebClientDir)src/**/*;$(WebClientDir)index.html;$(WebClientDir)vite.config.js;$(WebClientDir)package.json;$(WebClientDir)package-lock.json" />
+  </ItemGroup>
+
+  <!-- Runs before static web assets are collected so files generated in this build are included. -->
+  <Target Name="BuildClient" BeforeTargets="ResolveProjectStaticWebAssets"
+    Condition="'$(SkipClientBuild)' != 'true' And '$(DesignTimeBuild)' != 'true'"
+    DependsOnTargets="_DetectNode;_ForceClientBuildOnPublish;_InstallClientDependencies;_BuildClientBundle" />
+
+  <Target Name="_SkipClientBuildMessage" BeforeTargets="ResolveProjectStaticWebAssets"
+    Condition="'$(SkipClientBuild)' == 'true' And '$(DesignTimeBuild)' != 'true'">
+    <Message Importance="high" Text="SkipClientBuild=true: React client build skipped." />
+  </Target>
+
+  <!-- The SDK keeps a stale static web assets manifest when assets drop to zero; it still
+       points at wwwroot, and the app fails to start if that folder is missing. -->
+  <Target Name="_EnsureWebRoot" BeforeTargets="ResolveProjectStaticWebAssets"
+    Condition="'$(DesignTimeBuild)' != 'true'">
+    <MakeDir Directories="$(MSBuildProjectDirectory)/wwwroot" />
+  </Target>
+
+  <Target Name="_DetectNode">
+    <Exec Command="node --version" IgnoreExitCode="true" EchoOff="true"
+      StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="_NodeExitCode" />
+    </Exec>
+  </Target>
+
+  <Target Name="_ForceClientBuildOnPublish"
+    Condition="'$(_IsPublishing)' == 'true' And '$(_NodeExitCode)' == '0'">
+    <Delete Files="$(ClientIndexFile)" />
+  </Target>
+
+  <Target Name="_InstallClientDependencies" Condition="'$(_NodeExitCode)' == '0'"
+    Inputs="$(WebClientDir)package.json;$(WebClientDir)package-lock.json"
+    Outputs="$(ClientNpmMarker)">
+    <Exec Command="npm install" WorkingDirectory="$(WebClientDir)" />
+    <!-- npm may rewrite package-lock.json after the marker; keep the marker newest. -->
+    <Touch Files="$(ClientNpmMarker)" />
+  </Target>
+
+  <Target Name="_BuildClientBundle" Inputs="@(ClientBuildInput)" Outputs="$(ClientIndexFile)">
+    <Warning Code="KYC001" Condition="'$(_NodeExitCode)' != '0'"
+      Text="Node.js was not found, so the React client was not built. The API runs normally, but / will not serve the client until Node.js is installed. Use -p:SkipClientBuild=true to skip this step." />
+
+    <Exec Command="npm run build" WorkingDirectory="$(WebClientDir)"
+      Condition="'$(_NodeExitCode)' == '0'" />
+    <ItemGroup Condition="'$(_NodeExitCode)' == '0'">
+      <_ClientDist Include="$(WebClientDir)dist/**/*" />
     </ItemGroup>
-    <RemoveDir Directories="$(MSBuildProjectDirectory)/wwwroot" />
-    <Copy SourceFiles="@(ReactDist)"
-      DestinationFiles="@(ReactDist->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <RemoveDir Directories="$(MSBuildProjectDirectory)/wwwroot"
+      Condition="'$(_NodeExitCode)' == '0'" />
+    <Copy SourceFiles="@(_ClientDist)"
+      DestinationFiles="@(_ClientDist->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Touch Files="$(ClientIndexFile)" Condition="'$(_NodeExitCode)' == '0'" />
+
+    <!-- Content items were collected at load time; Vite's hashed file names make them stale. -->
+    <ItemGroup Condition="'$(_NodeExitCode)' == '0'">
+      <Content Remove="wwwroot/**" />
+      <Content Include="wwwroot/**" ExcludeFromSingleFile="true"
+        CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 
 </Project>

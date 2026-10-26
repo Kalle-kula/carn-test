@@ -25,6 +25,8 @@ TestResults/
 ## Secrets / local config
 appsettings.*.local.json
 secrets.json
+# ASP.NET Core Data Protection keys (generated on first run)
+keys/
 
 ## OS
 .DS_Store

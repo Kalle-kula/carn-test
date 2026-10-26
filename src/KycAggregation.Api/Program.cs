@@ -62,6 +62,12 @@ var apiKeys = config.GetSection("Security:ApiKeys").Get<string[]>() ?? [];
 
 var app = builder.Build();
 
+if (!app.Environment.WebRootFileProvider.GetFileInfo("index.html").Exists)
+{
+    app.Logger.LogWarning(
+        "Web client not built: '/' returns 404. Install Node.js and run 'dotnet build' to build it; the API works without it.");
+}
+
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<KycDbContext>().Database.EnsureCreated();

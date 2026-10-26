@@ -61,4 +61,27 @@ public sealed class SecurityTests
         Assert.All(factory.Logs, line => Assert.DoesNotContain(ssn, line));
         Assert.Contains(factory.Logs, line => line.Contains("KYC lookup served for subject"));
     }
+
+    [Fact]
+    public async Task Upstream_request_logs_never_contain_the_plaintext_ssn()
+    {
+        const string ssn = "19900220-5678";
+        var upstream = new StubHttpMessageHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            var p when p.StartsWith("/personal-details/") =>
+                StubHttpMessageHandler.Json("""{"firstName":"Ada","surName":"Lovelace","address":"Storgatan 1, 111 22 Stockholm"}"""),
+            var p when p.StartsWith("/contact-details/") =>
+                StubHttpMessageHandler.Json("""{"emails":[],"phoneNumbers":[],"addresses":[]}"""),
+            var p when p.StartsWith("/kyc-form/") =>
+                StubHttpMessageHandler.Json("""{"items":[{"key":"tax_country","value":"SE"}]}"""),
+            _ => StubHttpMessageHandler.NotFound(),
+        });
+        using var factory = new KycApiFactory { UpstreamHandler = upstream };
+        using var client = factory.CreateAuthenticatedClient();
+
+        var response = await client.GetAsync($"/kyc-data/{ssn}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.All(factory.Logs, line => Assert.DoesNotContain(ssn, line));
+    }
 }

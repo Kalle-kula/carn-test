@@ -70,13 +70,24 @@ The warning has its own code so that if warnings are ever treated as errors,
 `KYC001` can be added to `WarningsNotAsErrors` and builds without Node.js keep
 working.
 
+### Decision: Always create `wwwroot/`, even when empty
+
+Found during implementation. When the static web assets drop to zero (client
+removed, then built without Node.js or with `SkipClientBuild`), the SDK keeps
+the previous development manifest, which still lists `wwwroot/` as a content
+root. If the folder is missing, ASP.NET throws `DirectoryNotFoundException`
+at startup in Development, so the API would not run without the client. A
+small target creates `wwwroot/` before static web assets are resolved; missing
+files then just return 404.
+
 ### Decision: `SkipClientBuild` opt-out
 
 Both client targets have the condition `'$(SkipClientBuild)' != 'true'`. Set it
 with `-p:SkipClientBuild=true` or as an environment variable (MSBuild reads
-environment variables as properties). When set, a normal-importance message
-says the client build was skipped. It is a message, not a warning, because the
-user asked for it.
+environment variables as properties). When set, a message says the client
+build was skipped. It is a message, not a warning, because the user asked for
+it. It uses high importance, because normal-importance messages are hidden in
+default `dotnet build` output.
 
 ### Decision: Register generated files before static web assets are collected
 
@@ -85,11 +96,14 @@ the client build creates them later, so they are missing from that list and from
 the publish output. The existing publish-only target probably has this problem.
 
 The client target therefore runs before the SDK resolves static web assets
-(target `ResolveProjectStaticWebAssets`; confirm the name during
-implementation). After copying, it adds the new files as `Content` items,
-excluding any that already exist (`Include="wwwroot/**" Exclude="@(Content)"`).
-The files are then handled exactly as on a second build, for both `dotnet run`
-and `dotnet publish`, without adding separate publish items.
+(target `ResolveProjectStaticWebAssets`, confirmed in SDK 9.0.300, which reads
+`@(Content)`). After copying, it removes the `wwwroot/**` `Content` items
+collected at load time and adds the new files with the same metadata the Web
+SDK uses (`ExcludeFromSingleFile`, `CopyToPublishDirectory=PreserveNewest`).
+Removing matters: Vite's hashed file names change on every rebuild, so the
+load-time items can point at deleted files. The files are then handled exactly
+as on a second build, for both `dotnet run` and `dotnet publish`, without adding
+separate publish items.
 
 - **Alternative - add files to `ResolvedFileToPublish` after
   `ComputeFilesToPublish`** (the old SPA template approach): rejected. Here the
@@ -119,6 +133,21 @@ the API is running then works without a restart.
 
 - **Alternative - register the fallback only when the file exists**: rejected.
   Same 404, but a client built after startup is not served until restart.
+
+### Decision: Limit built-in `HttpClient` logging to Warning
+
+Found while verifying the README. `IHttpClientFactory` logs every outgoing
+request URL at Information level, and the upstream routes contain the SSN
+(`/personal-details/{ssn}`, ...). `appsettings.json` sets the
+`System.Net.Http.HttpClient` category to Warning, which keeps those lines out
+in every environment. Retries and failures are still visible through the
+resilience handler and the global exception handler, neither of which logs the
+URL. The existing SSN-in-logs test replaces the upstream client with a fake, so
+a new test runs the real typed client against a stub handler and checks that no
+log line contains the SSN.
+
+- **Alternative - redact the URL in a custom logging handler**: more code for
+  the same result; request-level detail is not needed in normal operation.
 
 ### Decision: README covers running the app and the design decisions only
 

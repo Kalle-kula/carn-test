@@ -29,6 +29,11 @@ requirement, makes a fresh clone work with one command.
   to run it, how to run the tests, how to try the API (API key, `curl` example,
   the five upstream test SSNs and the status each returns), the optional web
   client, and a Decisions section explaining the main design choices.
+- Fix a leak found while checking the README: .NET's built-in `HttpClient`
+  logging writes each upstream request URL, which contains the SSN, at
+  Information level. That logging is limited to Warning and above, bringing the
+  code back in line with the existing `kyc-aggregation` requirement that SSNs
+  never appear in plaintext in logs (no requirement change).
 
 ## Capabilities
 
@@ -51,6 +56,8 @@ requirement, makes a fresh clone work with one command.
   `SkipClientBuild`, and adds the generated files to the publish output.
 - **Startup** (`src/KycAggregation.Api/Program.cs`): a check for the built
   client's `index.html` that logs a warning when it is missing.
+- **Logging** (`src/KycAggregation.Api/appsettings.json`): `HttpClient` logs
+  limited to Warning, with a test that exercises the real upstream client.
 - **Tests**: `dotnet test` builds the API project and so may build the client
   when Node.js is present; it still passes without Node.js.
 - **Docs**: new `README.md` at the repository root with run instructions and
