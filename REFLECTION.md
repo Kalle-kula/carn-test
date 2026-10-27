@@ -52,4 +52,3 @@
 - Encrypt the Data Protection key ring at rest (ASP.NET warns it is stored
   unencrypted) and remove the old key from git history.
 - Publish an OpenAPI document.
-- A CI pipeline that builds and tests with and without Node.js.
